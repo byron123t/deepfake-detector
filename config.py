@@ -1,16 +1,43 @@
 """
 Configuration for the real-time deepfake detector.
 
-Video pipeline references:
-  - FaceForensics++ (Rössler et al., ICCV 2019)
-  - EfficientNet-based DFDC detector (Tan et al., 2019 + DFDC 2020)
-  - MesoNet (Afchar et al., ICCVW 2018)
+Video pipeline
+--------------
+Primary:  CommunityForensics ViT (CVPR 2025, MIT)
+          Park & Owens, arXiv 2411.04125
+          HuggingFace: buildborderless/CommunityForensics-DeepfakeDet-ViT
+          Trained on 2.7M images from 4,803 generators; best cross-generator
+          generalisation of any open model.
 
-Audio pipeline references:
-  - AASIST: Audio Anti-Spoofing using Integrated Spectro-Temporal
-    Graph Attention Networks (Jung et al., ICASSP 2022)
-  - RawNet2 (Tak et al., Interspeech 2021)
-  - ASVspoof 2019/2021 challenge baselines
+Alternate: GenConViT (2023, GPL-3.0)
+          Deressa et al., arXiv 2307.07036
+          HuggingFace: Deressa/GenConViT
+          ConvNeXt + Swin Transformer + VAE; 95.8% avg on DFDC/FF++/Celeb-DF.
+
+Lightweight: MesoNet-4 (ICCVW 2018)
+          Afchar et al., arXiv 1809.00888
+          ~28K params; run scripts/convert_mesonet_keras.py for weights.
+
+Audio pipeline
+--------------
+Primary:  wav2vec2-large-xlsr deepfake detector (Apache 2.0)
+          Gustking/wav2vec2-large-xlsr-deepfake-audio-classification
+          EER 4.01% on ASVspoof 2019 LA; 150k downloads/month.
+
+Alternate: HuBERT-base in-the-wild deepfake detector (Apache 2.0)
+          abhishtagatya/hubert-base-960h-itw-deepfake
+          Claimed EER 1.43% (training data undocumented).
+
+State-of-the-art references not yet integrated:
+  AASIST (Jung et al., ICASSP 2022):  github.com/clovaai/aasist  EER 0.83%
+  SSL+AASIST (Tak et al., Odyssey 2022): github.com/TakHemlata/SSL_Anti-spoofing
+  WavLM ensemble (arXiv 2408.07414): top ASVspoof5 2024 system
+
+Generalisation caveat
+---------------------
+Deepfake-Eval-2024 (arXiv 2503.02857) shows ~50% AUC drop across all SOTA
+open models when tested on real-world 2024 deepfakes.  Detection results
+should be treated as a probabilistic signal, not ground truth.
 """
 
 from dataclasses import dataclass, field
@@ -21,66 +48,60 @@ from typing import Optional, Tuple
 class VideoConfig:
     enabled: bool = True
 
-    # Frame sampling — only analyze the early portion of a call.
-    # Sampling N frames spread across the first `sample_window` seconds
-    # keeps the pipeline fast while covering the initial handshake period
-    # most likely to use a prepared deepfake.
+    # Frame sampling: gather N frames spread over the first `sample_window`
+    # seconds, then re-sample every `ongoing_interval` seconds.
     sample_count: int = 8
-    sample_window: float = 30.0       # seconds to spread samples across
-    ongoing_interval: float = 60.0    # seconds between subsequent sample bursts
+    sample_window: float = 30.0
+    ongoing_interval: float = 60.0
 
     # Face detection (MediaPipe BlazeFace)
     face_min_confidence: float = 0.7
-    face_padding: float = 0.2         # fractional padding around detected face
+    face_padding: float = 0.2
 
-    # Classification
-    deepfake_threshold: float = 0.55  # posterior probability to flag as fake
-    frame_size: int = 224             # model input resolution
+    # Classification threshold: fake probability required to flag a face.
+    # Set conservatively high to reduce false positives on legitimate calls.
+    deepfake_threshold: float = 0.60
 
-    # Screen capture region — None means full primary monitor.
-    # Tune this to the region showing the remote participant's face.
-    capture_region: Optional[Tuple[int, int, int, int]] = None  # (left, top, width, height)
+    # Screen capture region — None = full primary monitor.
+    capture_region: Optional[Tuple[int, int, int, int]] = None  # (left, top, w, h)
 
-    # Model backend: "mesonet" (default — pretrained weights available via
-    # convert_mesonet_keras.py) or "efficientnet" (requires FF++ fine-tuning
-    # for deepfake-specific accuracy; falls back to ImageNet pretrain only)
-    model_backend: str = "mesonet"
-    model_path: Optional[str] = None   # override default path under models/
+    # Backend: "community_forensics" | "genconvit" | "mesonet"
+    # community_forensics is the default: best generalisation, auto-downloads.
+    model_backend: str = "community_forensics"
+    model_path: Optional[str] = None   # override default; only used for mesonet
 
 
 @dataclass
 class AudioConfig:
     enabled: bool = True
 
-    # Audio parameters
-    sample_rate: int = 16000           # Hz — matches ASVspoof / AASIST training
-    clip_duration: float = 3.0         # seconds per inference clip
-    hop_duration: float = 1.5          # seconds between clip windows (50% overlap)
+    sample_rate: int = 16000           # 16 kHz — required by all HF models
+    clip_duration: float = 3.0         # seconds per inference window
+    hop_duration: float = 1.5          # overlap between windows (50%)
 
-    # Voice Activity Detection (WebRTC VAD)
-    # Aggressiveness 0 = least aggressive (more false negatives),
-    # 3 = most aggressive (more false positives on speech as silence)
-    vad_aggressiveness: int = 2
-    vad_frame_ms: int = 30             # VAD frame length in ms (10, 20, or 30)
+    # WebRTC VAD settings — gates analysis to remote-party audio only
+    vad_aggressiveness: int = 2        # 0 (least) to 3 (most) aggressive
+    vad_frame_ms: int = 30             # must be 10, 20, or 30
 
-    # User silence gate: only analyze incoming audio when the user's own
-    # microphone RMS energy is below this threshold.
+    # User silence gate: analysis only runs when mic RMS < this threshold
     user_silence_rms: float = 0.015
 
-    # Classification
     deepfake_threshold: float = 0.60
-    n_mels: int = 64                   # mel filter banks for spectrogram model
-    n_fft: int = 512
-    hop_length: int = 160
 
-    # Device indices — None = OS default.
-    # On macOS use BlackHole/Soundflower for system audio loopback;
-    # on Linux use a PulseAudio monitor source;
-    # on Windows WASAPI loopback is selected automatically.
+    # Backend: "wav2vec2" | "hubert" | "lcnn"
+    # wav2vec2 is the default: Apache 2.0, 150k downloads/month, verified EER.
+    audio_backend: str = "wav2vec2"
+    model_path: Optional[str] = None   # override; only used for lcnn
+
+    # Audio device indices — None = OS default.
+    # Run: python scripts/list_audio_devices.py
     mic_device: Optional[int] = None
     system_audio_device: Optional[int] = None
 
-    model_path: Optional[str] = None
+    # LCNN-specific feature extraction (only used when backend="lcnn")
+    n_mels: int = 64
+    n_fft: int = 512
+    hop_length: int = 160
 
 
 @dataclass
@@ -89,12 +110,6 @@ class Config:
     audio: AudioConfig = field(default_factory=AudioConfig)
 
     models_dir: str = "models"
-
-    # Minimum seconds between repeated notifications for the same modality
-    notification_cooldown: float = 30.0
-
-    # Confidence required across multiple frames/clips before alerting
-    # (majority vote across the sampled batch)
-    consensus_threshold: float = 0.5   # fraction of samples that must flag fake
-
+    notification_cooldown: float = 30.0   # min seconds between repeat alerts
+    consensus_threshold: float = 0.5      # fraction of samples that must flag fake
     log_level: str = "INFO"

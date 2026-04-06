@@ -89,12 +89,10 @@ class Orchestrator:
             aggressiveness=ac.vad_aggressiveness,
         )
         self._audio_model = AudioDeepfakeDetector(
+            backend=ac.audio_backend,
             model_path=ac.model_path,
             threshold=ac.deepfake_threshold,
             sample_rate=ac.sample_rate,
-            n_mels=ac.n_mels,
-            n_fft=ac.n_fft,
-            hop_length=ac.hop_length,
         )
         self._audio_capture = AudioCapture(
             sample_rate=ac.sample_rate,

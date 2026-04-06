@@ -51,12 +51,24 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument(
         "--video-backend",
-        choices=["efficientnet", "mesonet"],
-        default="mesonet",
+        choices=["community_forensics", "genconvit", "mesonet"],
+        default="community_forensics",
         help=(
-            "Video classifier backend (default: mesonet). "
-            "mesonet: pretrained weights via scripts/convert_mesonet_keras.py. "
-            "efficientnet: ImageNet backbone; fine-tune with scripts/finetune_efficientnet.py."
+            "Video classifier backend (default: community_forensics). "
+            "community_forensics: CVPR 2025 ViT, auto-downloads ~85 MB, best generalisation. "
+            "genconvit: ConvNeXt+Swin hybrid, auto-downloads ~300 MB. "
+            "mesonet: lightweight 28K-param model, run scripts/convert_mesonet_keras.py first."
+        ),
+    )
+    p.add_argument(
+        "--audio-backend",
+        choices=["wav2vec2", "hubert", "lcnn"],
+        default="wav2vec2",
+        help=(
+            "Audio classifier backend (default: wav2vec2). "
+            "wav2vec2: Apache 2.0, auto-downloads ~1.2 GB, EER 4.01%% on ASVspoof2019. "
+            "hubert: Apache 2.0, auto-downloads ~360 MB, claimed EER 1.43%%. "
+            "lcnn: trainable fallback — train with scripts/train_audio_lcnn.py."
         ),
     )
     p.add_argument(
@@ -176,6 +188,7 @@ def build_config(args: argparse.Namespace) -> Config:
     )
     audio_cfg = AudioConfig(
         enabled=not args.no_audio,
+        audio_backend=args.audio_backend,
         mic_device=args.mic_device,
         system_audio_device=args.system_audio_device,
         deepfake_threshold=args.audio_threshold,

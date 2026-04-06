@@ -1,0 +1,27 @@
+# Core ML
+torch>=2.0.0
+torchvision>=0.15.0
+timm>=0.9.0                  # EfficientNet and other architectures via timm
+
+# Face detection
+mediapipe>=0.10.0            # Lightweight real-time face detection (Google)
+opencv-python>=4.8.0
+
+# Audio processing
+sounddevice>=0.4.6           # Cross-platform audio I/O
+numpy>=1.24.0
+librosa>=0.10.0              # Mel-spectrogram extraction
+webrtcvad>=2.0.10            # Google WebRTC Voice Activity Detector
+
+# Screen capture
+mss>=9.0.1                   # Cross-platform screen capture
+
+# OS notifications
+plyer>=2.1.0                 # Cross-platform OS notifications
+
+# Utilities
+tqdm>=4.65.0
+requests>=2.31.0
+Pillow>=10.0.0
+scipy>=1.11.0
+huggingface_hub>=0.19.0      # Downloading pretrained weights

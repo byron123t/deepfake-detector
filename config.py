@@ -41,8 +41,10 @@ class VideoConfig:
     # Tune this to the region showing the remote participant's face.
     capture_region: Optional[Tuple[int, int, int, int]] = None  # (left, top, width, height)
 
-    # Model backend: "efficientnet" (default, more accurate) or "mesonet" (faster, <1 MB)
-    model_backend: str = "efficientnet"
+    # Model backend: "mesonet" (default — pretrained weights available via
+    # convert_mesonet_keras.py) or "efficientnet" (requires FF++ fine-tuning
+    # for deepfake-specific accuracy; falls back to ImageNet pretrain only)
+    model_backend: str = "mesonet"
     model_path: Optional[str] = None   # override default path under models/
 
 

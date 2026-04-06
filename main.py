@@ -52,8 +52,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--video-backend",
         choices=["efficientnet", "mesonet"],
-        default="efficientnet",
-        help="Video classifier backend (default: efficientnet).",
+        default="mesonet",
+        help=(
+            "Video classifier backend (default: mesonet). "
+            "mesonet: pretrained weights via scripts/convert_mesonet_keras.py. "
+            "efficientnet: ImageNet backbone; fine-tune with scripts/finetune_efficientnet.py."
+        ),
     )
     p.add_argument(
         "--sample-count",

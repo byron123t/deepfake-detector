@@ -1,34 +1,70 @@
-# Core ML
+# =============================================================================
+# Python dependencies for deepfake-detector
+#
+# SYSTEM DEPENDENCIES MUST BE INSTALLED FIRST — see README.md § 1 or run:
+#   bash scripts/install_system_deps.sh
+#
+# macOS:   brew install portaudio libsndfile ffmpeg
+# Ubuntu:  sudo apt install portaudio19-dev libsndfile1-dev ffmpeg libgl1
+#                           libnotify-bin python3-dev
+# Windows: install ffmpeg and add to PATH; sounddevice/soundfile ship bundled
+# =============================================================================
+
+# --- Core ML framework ---
 torch>=2.0.0
+# GPU: pip install torch --index-url https://download.pytorch.org/whl/cu121
+# MPS (Apple Silicon): the default wheel includes MPS support
+
 torchvision>=0.15.0
-timm>=0.9.0                      # EfficientNet / ConvNeXt / Swin for GenConViT
 
-# HuggingFace ecosystem — used by all primary models
-transformers>=4.35.0             # CommunityForensics ViT, wav2vec2, HuBERT
-huggingface_hub>=0.19.0          # weight downloads (GenConViT, MesoNet conversion)
-accelerate>=0.24.0               # mixed-precision inference
+# --- HuggingFace ecosystem ---
+# Used by all primary models (CommunityForensics ViT, wav2vec2, HuBERT)
+transformers>=4.35.0
+huggingface_hub>=0.19.0
+accelerate>=0.24.0
 
-# Face detection
-mediapipe>=0.10.0                # BlazeFace: sub-ms face detection (Bazarevsky et al., 2019)
+# --- timm — ConvNeXt / Swin Transformer for GenConViT backend ---
+timm>=0.9.0
+
+# --- Face detection ---
+# MediaPipe BlazeFace: sub-ms face detection (Bazarevsky et al., 2019)
+mediapipe>=0.10.0
 opencv-python>=4.8.0
 
-# Audio processing
-sounddevice>=0.4.6               # cross-platform audio I/O
+# --- Audio I/O ---
+# sounddevice wraps PortAudio — PortAudio must be installed system-wide
+# (brew install portaudio  /  apt install portaudio19-dev)
+sounddevice>=0.4.6
+
+# SoundFile wraps libsndfile — libsndfile must be installed system-wide
+# (brew install libsndfile  /  apt install libsndfile1-dev)
+# On Windows and macOS ARM wheels ship bundled; Linux needs the system lib.
+soundfile>=0.12.0
+
+# --- Audio feature extraction (LCNN backend) ---
+# librosa uses ffmpeg for decoding — ffmpeg must be on PATH
 numpy>=1.24.0
-librosa>=0.10.0                  # log-mel spectrograms (LCNN backend)
-webrtcvad>=2.0.10                # Google WebRTC VAD for mic silence detection
+librosa>=0.10.0
+scipy>=1.11.0
 
-# Screen capture
-mss>=9.0.1                       # cross-platform screen capture
+# --- Voice activity detection ---
+# webrtcvad builds a C extension — needs python3-dev (Linux) / Xcode CLT (macOS)
+webrtcvad>=2.0.10
 
-# OS notifications
-plyer>=2.1.0                     # cross-platform OS notifications
+# --- Screen capture ---
+mss>=9.0.1
 
-# Utilities
+# --- OS notifications ---
+# plyer uses Notification Center (macOS), notify-send (Linux), Toast (Windows)
+# Linux: apt install libnotify-bin   to get notify-send
+plyer>=2.1.0
+
+# --- Utilities ---
 tqdm>=4.65.0
 requests>=2.31.0
 Pillow>=10.0.0
-scipy>=1.11.0
 
-# For MesoNet Keras→PyTorch conversion only (not required at runtime)
+# --- MesoNet Keras conversion (optional, not needed at runtime) ---
+# h5py requires HDF5 system library on Linux: apt install libhdf5-dev
+# Install when needed: pip install h5py
 # h5py>=3.9.0
